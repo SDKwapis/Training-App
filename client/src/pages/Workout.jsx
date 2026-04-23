@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ChevronLeft, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getRoutine, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
 import { getProgressionSuggestion } from '../lib/progression.js';
 import MachineCard from '../components/MachineCard.jsx';
