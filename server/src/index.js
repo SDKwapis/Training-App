@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { authRouter } from './routes/auth.js';
 import { muscleGroupsRouter } from './routes/muscleGroups.js';
 import { machinesRouter } from './routes/machines.js';
 import { routinesRouter } from './routes/routines.js';
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(express.json());
 
+app.use('/api/auth', authRouter);
 app.use('/api/muscle-groups', muscleGroupsRouter);
 app.use('/api/machines', machinesRouter);
 app.use('/api/routines', routinesRouter);

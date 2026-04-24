@@ -5,6 +5,14 @@ CREATE TABLE IF NOT EXISTS muscle_groups (
   display_order INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(200) NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS machines (
   id SERIAL PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
@@ -21,6 +29,9 @@ CREATE TABLE IF NOT EXISTS routines (
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- user_id NULL = global template visible to all users
+ALTER TABLE routines ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 
 CREATE TABLE IF NOT EXISTS routine_slots (
   id SERIAL PRIMARY KEY,
@@ -41,6 +52,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   notes TEXT
 );
 
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+
 CREATE TABLE IF NOT EXISTS session_sets (
   id SERIAL PRIMARY KEY,
   session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
@@ -59,5 +72,7 @@ CREATE TABLE IF NOT EXISTS session_sets (
 CREATE INDEX IF NOT EXISTS idx_session_sets_machine ON session_sets(machine_id);
 CREATE INDEX IF NOT EXISTS idx_session_sets_session ON session_sets(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_routine ON sessions(routine_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_machines_muscle_group ON machines(muscle_group_id);
 CREATE INDEX IF NOT EXISTS idx_routine_slots_routine ON routine_slots(routine_id);
+CREATE INDEX IF NOT EXISTS idx_routines_user ON routines(user_id);

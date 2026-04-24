@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { authenticate } from '../middleware/authenticate.js';
 
 export const machinesRouter = Router();
 
@@ -42,18 +43,18 @@ machinesRouter.get('/:id', async (req, res, next) => {
   }
 });
 
-// Last N sets performed on this machine, with session date
-machinesRouter.get('/:id/history', async (req, res, next) => {
+// Last N sets for this machine scoped to the authenticated user
+machinesRouter.get('/:id/history', authenticate, async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const { rows } = await pool.query(
       `SELECT ss.*, s.started_at AS session_date
        FROM session_sets ss
        JOIN sessions s ON s.id = ss.session_id
-       WHERE ss.machine_id = $1
+       WHERE ss.machine_id = $1 AND s.user_id = $2
        ORDER BY ss.completed_at DESC
-       LIMIT $2`,
-      [req.params.id, limit]
+       LIMIT $3`,
+      [req.params.id, req.user.id, limit]
     );
     res.json(rows);
   } catch (err) {
@@ -61,17 +62,17 @@ machinesRouter.get('/:id/history', async (req, res, next) => {
   }
 });
 
-// Last set for a given machine (used for progression suggestion)
-machinesRouter.get('/:id/last-set', async (req, res, next) => {
+// Last set for a given machine scoped to the authenticated user (progression)
+machinesRouter.get('/:id/last-set', authenticate, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT ss.*, s.started_at AS session_date
        FROM session_sets ss
        JOIN sessions s ON s.id = ss.session_id
-       WHERE ss.machine_id = $1
+       WHERE ss.machine_id = $1 AND s.user_id = $2
        ORDER BY ss.completed_at DESC
        LIMIT 1`,
-      [req.params.id]
+      [req.params.id, req.user.id]
     );
     res.json(rows[0] || null);
   } catch (err) {

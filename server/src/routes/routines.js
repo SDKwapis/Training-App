@@ -1,12 +1,19 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { authenticate } from '../middleware/authenticate.js';
 
 export const routinesRouter = Router();
 
+routinesRouter.use(authenticate);
+
+// Returns user's own routines + global templates (user_id IS NULL)
 routinesRouter.get('/', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM routines ORDER BY created_at DESC'
+      `SELECT * FROM routines
+       WHERE user_id = $1 OR user_id IS NULL
+       ORDER BY user_id NULLS LAST, created_at DESC`,
+      [req.user.id]
     );
     res.json(rows);
   } catch (err) {
@@ -16,7 +23,10 @@ routinesRouter.get('/', async (req, res, next) => {
 
 routinesRouter.get('/:id', async (req, res, next) => {
   try {
-    const routineRes = await pool.query('SELECT * FROM routines WHERE id = $1', [req.params.id]);
+    const routineRes = await pool.query(
+      'SELECT * FROM routines WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)',
+      [req.params.id, req.user.id]
+    );
     if (!routineRes.rows.length) return res.status(404).json({ error: 'Routine not found' });
 
     const slotsRes = await pool.query(
@@ -43,8 +53,8 @@ routinesRouter.post('/', async (req, res, next) => {
     try {
       await client.query('BEGIN');
       const routineRes = await client.query(
-        'INSERT INTO routines (name, description) VALUES ($1, $2) RETURNING *',
-        [name, description || null]
+        'INSERT INTO routines (name, description, user_id) VALUES ($1, $2, $3) RETURNING *',
+        [name, description || null, req.user.id]
       );
       const routine = routineRes.rows[0];
 
@@ -76,13 +86,15 @@ routinesRouter.put('/:id', async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      // Only allow editing own routines, not global templates
       const routineRes = await client.query(
-        `UPDATE routines SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id = $3 RETURNING *`,
-        [name, description, req.params.id]
+        `UPDATE routines SET name = COALESCE($1, name), description = COALESCE($2, description)
+         WHERE id = $3 AND user_id = $4 RETURNING *`,
+        [name, description, req.params.id, req.user.id]
       );
       if (!routineRes.rows.length) {
         await client.query('ROLLBACK');
-        return res.status(404).json({ error: 'Routine not found' });
+        return res.status(404).json({ error: 'Routine not found or not editable' });
       }
 
       if (slots) {
@@ -111,7 +123,12 @@ routinesRouter.put('/:id', async (req, res, next) => {
 
 routinesRouter.delete('/:id', async (req, res, next) => {
   try {
-    await pool.query('DELETE FROM routines WHERE id = $1', [req.params.id]);
+    // Only allow deleting own routines
+    const { rowCount } = await pool.query(
+      'DELETE FROM routines WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Routine not found or not deletable' });
     res.status(204).end();
   } catch (err) {
     next(err);

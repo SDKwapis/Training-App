@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { authenticate } from '../middleware/authenticate.js';
 
 export const sessionsRouter = Router();
+
+sessionsRouter.use(authenticate);
 
 sessionsRouter.get('/', async (req, res, next) => {
   try {
@@ -13,10 +16,11 @@ sessionsRouter.get('/', async (req, res, next) => {
        FROM sessions s
        JOIN routines r ON r.id = s.routine_id
        LEFT JOIN session_sets ss ON ss.session_id = s.id
+       WHERE s.user_id = $1
        GROUP BY s.id, r.name
        ORDER BY s.started_at DESC
-       LIMIT $1`,
-      [limit]
+       LIMIT $2`,
+      [req.user.id, limit]
     );
     res.json(rows);
   } catch (err) {
@@ -29,8 +33,8 @@ sessionsRouter.get('/:id', async (req, res, next) => {
     const sessionRes = await pool.query(
       `SELECT s.*, r.name AS routine_name
        FROM sessions s JOIN routines r ON r.id = s.routine_id
-       WHERE s.id = $1`,
-      [req.params.id]
+       WHERE s.id = $1 AND s.user_id = $2`,
+      [req.params.id, req.user.id]
     );
     if (!sessionRes.rows.length) return res.status(404).json({ error: 'Session not found' });
 
@@ -57,8 +61,8 @@ sessionsRouter.post('/', async (req, res, next) => {
     const { routine_id } = req.body;
     if (!routine_id) return res.status(400).json({ error: 'routine_id is required' });
     const { rows } = await pool.query(
-      'INSERT INTO sessions (routine_id) VALUES ($1) RETURNING *',
-      [routine_id]
+      'INSERT INTO sessions (routine_id, user_id) VALUES ($1, $2) RETURNING *',
+      [routine_id, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -77,8 +81,10 @@ sessionsRouter.post('/:id/sets', async (req, res, next) => {
       return res.status(400).json({ error: 'routine_slot_id and machine_id are required' });
     }
 
-    // Verify session exists
-    const sessionCheck = await pool.query('SELECT id FROM sessions WHERE id = $1', [req.params.id]);
+    const sessionCheck = await pool.query(
+      'SELECT id FROM sessions WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
     if (!sessionCheck.rows.length) return res.status(404).json({ error: 'Session not found' });
 
     const { rows } = await pool.query(
@@ -99,9 +105,9 @@ sessionsRouter.patch('/:id/complete', async (req, res, next) => {
     const { notes } = req.body;
     const { rows } = await pool.query(
       `UPDATE sessions SET completed_at = NOW(), notes = COALESCE($1, notes)
-       WHERE id = $2 AND completed_at IS NULL
+       WHERE id = $2 AND user_id = $3 AND completed_at IS NULL
        RETURNING *`,
-      [notes || null, req.params.id]
+      [notes || null, req.params.id, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Session not found or already completed' });
     res.json(rows[0]);
