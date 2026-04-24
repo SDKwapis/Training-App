@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { getRoutine, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
+import { getRoutine, getSession, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
 import { getProgressionSuggestion } from '../lib/progression.js';
 import MachineCard from '../components/MachineCard.jsx';
 import ProgressionCard from '../components/ProgressionCard.jsx';
@@ -30,9 +30,7 @@ export default function Workout() {
   const { data: routineData, isLoading, isError, error } = useQuery({
     queryKey: ['session-routine', sessionId],
     queryFn: async () => {
-      const sessionRes = await fetch(`/api/sessions/${sessionId}`);
-      if (!sessionRes.ok) throw new Error(`Session fetch failed: ${sessionRes.status}`);
-      const session = await sessionRes.json();
+      const session = await getSession(sessionId);
       if (!session.routine_id) throw new Error('Session has no routine_id');
       return getRoutine(session.routine_id);
     },
