@@ -1,8 +1,13 @@
 const BASE = '/api';
 
+function authHeaders() {
+  const token = localStorage.getItem('hit_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function req(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     ...options,
   });
   if (!res.ok) {
@@ -12,6 +17,11 @@ async function req(path, options = {}) {
   if (res.status === 204) return null;
   return res.json();
 }
+
+// Auth
+export const register = (data) => req('/auth/register', { method: 'POST', body: JSON.stringify(data) });
+export const login = (data) => req('/auth/login', { method: 'POST', body: JSON.stringify(data) });
+export const getMe = () => req('/auth/me');
 
 // Muscle groups
 export const getMuscleGroups = () => req('/muscle-groups');

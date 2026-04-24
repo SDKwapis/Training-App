@@ -1,13 +1,35 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { Dumbbell, History, Settings } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Dumbbell, History, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Layout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
+      {/* Slim top bar with user info */}
+      <header className="flex items-center justify-between px-4 pt-4 pb-1">
+        <span className="text-xs text-zinc-600">{user?.name}</span>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          <LogOut size={12} />
+          Sign out
+        </button>
+      </header>
+
       <main className="flex-1 overflow-y-auto pb-20">
         <Outlet />
       </main>
-      <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex safe-bottom">
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex">
         <NavLink
           to="/"
           end

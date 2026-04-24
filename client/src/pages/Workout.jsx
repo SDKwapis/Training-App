@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ChevronLeft, X } from 'lucide-react';
-import { getRoutine, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
+import { CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { getRoutine, getSession, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
 import { getProgressionSuggestion } from '../lib/progression.js';
 import MachineCard from '../components/MachineCard.jsx';
 import ProgressionCard from '../components/ProgressionCard.jsx';
@@ -26,13 +26,12 @@ export default function Workout() {
   const [machineLastSet, setMachineLastSet] = useState(null);
   const [lastUsedMachineId, setLastUsedMachineId] = useState(null);
 
-  // Fetch the routine (passed by startSession but we re-fetch for reliability)
-  const { data: routineData, isLoading } = useQuery({
+  // Fetch the routine via the session record
+  const { data: routineData, isLoading, isError, error } = useQuery({
     queryKey: ['session-routine', sessionId],
     queryFn: async () => {
-      // Get session info to find routine_id
-      const sessionRes = await fetch(`/api/sessions/${sessionId}`);
-      const session = await sessionRes.json();
+      const session = await getSession(sessionId);
+      if (!session.routine_id) throw new Error('Session has no routine_id');
       return getRoutine(session.routine_id);
     },
   });
@@ -92,6 +91,15 @@ export default function Workout() {
   }
 
   if (isLoading) return <WorkoutShell><p className="text-zinc-400 p-8 text-center">Loading…</p></WorkoutShell>;
+  if (isError) return (
+    <WorkoutShell>
+      <div className="px-4 pt-16 text-center">
+        <p className="text-red-400 font-bold mb-2">Failed to load workout</p>
+        <p className="text-zinc-500 text-sm mb-6">{error?.message}</p>
+        <button className="btn-ghost" onClick={() => navigate('/')}>Back to Home</button>
+      </div>
+    </WorkoutShell>
+  );
 
   if (view === 'done') return <SessionComplete slots={slots} completedSlots={completedSlots} onExit={() => navigate('/')} />;
 
