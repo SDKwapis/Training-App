@@ -4,7 +4,7 @@ import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react
 import {
   getRoutines, getMuscleGroups, getMachines, getRoutine,
   createRoutine, updateRoutine, deleteRoutine,
-  createMachine, updateMachine,
+  createMachine, updateMachine, deleteMachine,
 } from '../lib/api.js';
 
 export default function Setup() {
@@ -103,6 +103,7 @@ function RoutineEditor({ routineId, onDone }) {
   });
 
   const { data: muscleGroups = [] } = useQuery({ queryKey: ['muscle-groups'], queryFn: getMuscleGroups });
+  const { data: allMachines = [] } = useQuery({ queryKey: ['machines'], queryFn: () => getMachines() });
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -114,7 +115,9 @@ function RoutineEditor({ routineId, onDone }) {
     setName(existing.name);
     setDescription(existing.description ?? '');
     setSlots(existing.slots.map((s) => ({
+      mode: s.machine_id ? 'machine' : 'muscle_group',
       muscle_group_id: s.muscle_group_id,
+      machine_id: s.machine_id || null,
       sets_target: s.sets_target,
       rep_range_min: s.rep_range_min,
       rep_range_max: s.rep_range_max,
@@ -125,9 +128,28 @@ function RoutineEditor({ routineId, onDone }) {
 
   function addSlot() {
     setSlots((prev) => [...prev, {
+      mode: 'muscle_group',
       muscle_group_id: muscleGroups[0]?.id ?? '',
+      machine_id: null,
       sets_target: 1, rep_range_min: 8, rep_range_max: 12, tut_target_seconds: 60,
     }]);
+  }
+
+  function setSlotMode(index, mode) {
+    setSlots((prev) => prev.map((s, i) => {
+      if (i !== index) return s;
+      if (mode === 'muscle_group') return { ...s, mode, machine_id: null };
+      return { ...s, mode };
+    }));
+  }
+
+  function setSlotMachine(index, machineId) {
+    const machine = allMachines.find((m) => m.id === parseInt(machineId));
+    setSlots((prev) => prev.map((s, i) =>
+      i === index
+        ? { ...s, machine_id: parseInt(machineId), muscle_group_id: machine?.muscle_group_id ?? s.muscle_group_id }
+        : s
+    ));
   }
 
   function removeSlot(index) {
@@ -201,16 +223,53 @@ function RoutineEditor({ routineId, onDone }) {
                 <div className="flex items-center gap-2 mb-3">
                   <GripVertical size={14} className="text-zinc-600" />
                   <span className="text-xs text-zinc-500 font-bold w-4">{i + 1}</span>
-                  <select
-                    value={slot.muscle_group_id}
-                    onChange={(e) => updateSlot(i, 'muscle_group_id', parseInt(e.target.value))}
-                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none"
-                  >
-                    {muscleGroups.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
+
+                  {/* Mode toggle */}
+                  <div className="flex bg-zinc-900 rounded overflow-hidden text-xs flex-shrink-0">
+                    {['muscle_group', 'machine'].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setSlotMode(i, m)}
+                        className={`px-2 py-1.5 transition-colors ${slot.mode === m ? 'bg-amber-400 text-zinc-950 font-bold' : 'text-zinc-500'}`}
+                      >
+                        {m === 'muscle_group' ? 'Group' : 'Machine'}
+                      </button>
                     ))}
-                  </select>
-                  <button onClick={() => removeSlot(i)} className="text-zinc-600 hover:text-red-400">
+                  </div>
+
+                  {slot.mode === 'muscle_group' ? (
+                    <select
+                      value={slot.muscle_group_id}
+                      onChange={(e) => updateSlot(i, 'muscle_group_id', parseInt(e.target.value))}
+                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none min-w-0"
+                    >
+                      {muscleGroups.map((g) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={slot.machine_id ?? ''}
+                      onChange={(e) => setSlotMachine(i, e.target.value)}
+                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none min-w-0"
+                    >
+                      <option value="">Select machine…</option>
+                      {muscleGroups.map((g) => {
+                        const groupMachines = allMachines.filter((m) => m.muscle_group_id === g.id);
+                        if (!groupMachines.length) return null;
+                        return (
+                          <optgroup key={g.id} label={g.name}>
+                            {groupMachines.map((m) => (
+                              <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                  )}
+
+                  <button onClick={() => removeSlot(i)} className="text-zinc-600 hover:text-red-400 flex-shrink-0">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -261,6 +320,12 @@ function MachinesTab() {
   const { data: muscleGroups = [] } = useQuery({ queryKey: ['muscle-groups'], queryFn: getMuscleGroups });
   const { data: machines = [] } = useQuery({ queryKey: ['machines'], queryFn: () => getMachines() });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteMachine,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['machines'] }),
+    onError: (err) => alert(err.message),
+  });
+
   const machinesByGroup = muscleGroups.reduce((acc, g) => {
     acc[g.id] = machines.filter((m) => m.muscle_group_id === g.id);
     return acc;
@@ -302,12 +367,22 @@ function MachinesTab() {
                 {groupMachines.map((m) => (
                   <div key={m.id} className="flex items-center justify-between gap-2">
                     <p className="text-sm text-zinc-300 flex-1 min-w-0 truncate">{m.name}</p>
-                    <button
-                      onClick={() => setEditingMachine(m)}
-                      className="text-xs text-zinc-500 border border-zinc-700 px-2 py-1 rounded shrink-0 hover:border-zinc-500"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setEditingMachine(m)}
+                        className="text-xs text-zinc-500 border border-zinc-700 px-2 py-1 rounded hover:border-zinc-500"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${m.name}"?`)) deleteMutation.mutate(m.id);
+                        }}
+                        className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button
