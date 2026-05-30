@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS routine_slots (
   id SERIAL PRIMARY KEY,
   routine_id INTEGER REFERENCES routines(id) ON DELETE CASCADE,
   muscle_group_id INTEGER REFERENCES muscle_groups(id),
+  machine_id INTEGER REFERENCES machines(id) ON DELETE SET NULL,
   slot_order INTEGER NOT NULL,
   sets_target INTEGER DEFAULT 1,
   rep_range_min INTEGER DEFAULT 8,
@@ -53,6 +54,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE routine_slots ADD COLUMN IF NOT EXISTS machine_id INTEGER REFERENCES machines(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS session_sets (
   id SERIAL PRIMARY KEY,

@@ -30,9 +30,11 @@ routinesRouter.get('/:id', async (req, res, next) => {
     if (!routineRes.rows.length) return res.status(404).json({ error: 'Routine not found' });
 
     const slotsRes = await pool.query(
-      `SELECT rs.*, mg.name AS muscle_group_name, mg.description AS muscle_group_description
+      `SELECT rs.*, mg.name AS muscle_group_name, mg.description AS muscle_group_description,
+              m.name AS machine_name
        FROM routine_slots rs
        JOIN muscle_groups mg ON mg.id = rs.muscle_group_id
+       LEFT JOIN machines m ON m.id = rs.machine_id
        WHERE rs.routine_id = $1
        ORDER BY rs.slot_order`,
       [req.params.id]
@@ -61,9 +63,9 @@ routinesRouter.post('/', async (req, res, next) => {
       for (let i = 0; i < slots.length; i++) {
         const s = slots[i];
         await client.query(
-          `INSERT INTO routine_slots (routine_id, muscle_group_id, slot_order, sets_target, rep_range_min, rep_range_max, tut_target_seconds)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [routine.id, s.muscle_group_id, i + 1, s.sets_target || 1, s.rep_range_min || 8, s.rep_range_max || 12, s.tut_target_seconds || 60]
+          `INSERT INTO routine_slots (routine_id, muscle_group_id, machine_id, slot_order, sets_target, rep_range_min, rep_range_max, tut_target_seconds)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [routine.id, s.muscle_group_id, s.machine_id || null, i + 1, s.sets_target || 1, s.rep_range_min || 8, s.rep_range_max || 12, s.tut_target_seconds || 60]
         );
       }
 

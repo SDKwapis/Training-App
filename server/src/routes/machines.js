@@ -117,3 +117,22 @@ machinesRouter.put('/:id', async (req, res, next) => {
     next(err);
   }
 });
+
+machinesRouter.delete('/:id', async (req, res, next) => {
+  try {
+    const history = await pool.query(
+      'SELECT COUNT(*) FROM session_sets WHERE machine_id = $1',
+      [req.params.id]
+    );
+    if (parseInt(history.rows[0].count) > 0) {
+      return res.status(409).json({
+        error: 'This machine has training history. Deactivate it instead to preserve your records.',
+      });
+    }
+    const { rowCount } = await pool.query('DELETE FROM machines WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Machine not found' });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});

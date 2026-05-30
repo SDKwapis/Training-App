@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { getRoutine, getSession, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
+import { getRoutine, getSession, getMachine, getMachines, getMachineLastSet, logSet, completeSession } from '../lib/api.js';
 import { getProgressionSuggestion } from '../lib/progression.js';
 import MachineCard from '../components/MachineCard.jsx';
 import ProgressionCard from '../components/ProgressionCard.jsx';
@@ -46,10 +46,21 @@ export default function Workout() {
   });
 
   async function openSlot(index) {
+    const slot = slots[index];
     setActiveSlotIndex(index);
     setSelectedMachine(null);
     setMachineLastSet(null);
-    setView('machines');
+
+    if (slot.machine_id) {
+      // Slot is pinned to a specific machine — skip the selector
+      const machine = await getMachine(slot.machine_id);
+      const lastSet = await getMachineLastSet(slot.machine_id);
+      setSelectedMachine(machine);
+      setMachineLastSet(lastSet);
+      setView('log');
+    } else {
+      setView('machines');
+    }
   }
 
   async function selectMachine(machine) {
@@ -191,9 +202,10 @@ function SlotsView({ slots, completedSlots, onSelectSlot, onFinish, allDone, onE
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${done ? 'text-zinc-500' : 'text-white'}`}>
-                  {slot.muscle_group_name}
+                  {slot.machine_id ? slot.machine_name : slot.muscle_group_name}
                 </p>
                 <p className="text-xs text-zinc-600">
+                  {slot.machine_id ? slot.muscle_group_name + ' · pinned' : ''}
                   {slot.rep_range_min}–{slot.rep_range_max} reps · {slot.tut_target_seconds}s TUT
                 </p>
               </div>

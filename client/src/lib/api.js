@@ -34,6 +34,7 @@ export const getMachineLastSet = (id) => req(`/machines/${id}/last-set`);
 export const getMachineHistory = (id, limit = 10) => req(`/machines/${id}/history?limit=${limit}`);
 export const createMachine = (data) => req('/machines', { method: 'POST', body: JSON.stringify(data) });
 export const updateMachine = (id, data) => req(`/machines/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteMachine = (id) => req(`/machines/${id}`, { method: 'DELETE' });
 
 // Routines
 export const getRoutines = () => req('/routines');
