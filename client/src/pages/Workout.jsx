@@ -201,9 +201,16 @@ function SlotsView({ slots, completedSlots, onSelectSlot, onFinish, allDone, onE
                 {done ? <CheckCircle2 size={18} /> : i + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${done ? 'text-zinc-500' : 'text-white'}`}>
-                  {slot.machine_id ? slot.machine_name : slot.muscle_group_name}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className={`font-semibold text-sm ${done ? 'text-zinc-500' : 'text-white'}`}>
+                    {slot.machine_id ? slot.machine_name : slot.muscle_group_name}
+                  </p>
+                  {slot.modifier && slot.modifier !== 'NA' && (
+                    <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-1.5 py-0.5 rounded">
+                      {slot.modifier}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-zinc-600">
                   {slot.machine_id ? slot.muscle_group_name + ' · pinned' : ''}
                   {slot.rep_range_min}–{slot.rep_range_max} reps · {slot.tut_target_seconds}s TUT
@@ -328,7 +335,14 @@ function SetLogView({ slot, machine, lastSet, suggestion, onBack, onSubmit }) {
         <button onClick={onBack} className="flex items-center gap-1 text-zinc-500 text-sm mb-3 -ml-1">
           <ChevronLeft size={16} /> Back
         </button>
-        <h2 className="text-xl font-bold leading-tight">{machine?.name}</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-xl font-bold leading-tight">{machine?.name}</h2>
+          {slot?.modifier && slot.modifier !== 'NA' && (
+            <span className="text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded">
+              {slot.modifier}
+            </span>
+          )}
+        </div>
         <p className="text-zinc-500 text-xs mt-0.5">{slot?.muscle_group_name}</p>
       </div>
 
