@@ -122,9 +122,12 @@ function RoutineEditor({ routineId, onDone }) {
       rep_range_min: s.rep_range_min,
       rep_range_max: s.rep_range_max,
       tut_target_seconds: s.tut_target_seconds,
+      modifier: s.modifier || 'NA',
     })));
     setInitialized(true);
   }
+
+  const MODIFIERS = ['NA', 'Super Slow', 'Negative', 'Breakdowns', 'Single Leg'];
 
   function addSlot() {
     setSlots((prev) => [...prev, {
@@ -132,6 +135,7 @@ function RoutineEditor({ routineId, onDone }) {
       muscle_group_id: muscleGroups[0]?.id ?? '',
       machine_id: null,
       sets_target: 1, rep_range_min: 8, rep_range_max: 12, tut_target_seconds: 60,
+      modifier: 'NA',
     }]);
   }
 
@@ -273,6 +277,21 @@ function RoutineEditor({ routineId, onDone }) {
                     <Trash2 size={14} />
                   </button>
                 </div>
+
+                {/* Modifier */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs text-zinc-600 w-16 shrink-0">Modifier</span>
+                  <select
+                    value={slot.modifier ?? 'NA'}
+                    onChange={(e) => updateSlot(i, 'modifier', e.target.value)}
+                    className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    {MODIFIERS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   {[
                     { k: 'sets_target', label: 'Sets' },

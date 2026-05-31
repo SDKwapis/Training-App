@@ -88,3 +88,5 @@ ALTER TABLE sessions ADD CONSTRAINT sessions_routine_id_fkey
 ALTER TABLE session_sets DROP CONSTRAINT IF EXISTS session_sets_routine_slot_id_fkey;
 ALTER TABLE session_sets ADD CONSTRAINT session_sets_routine_slot_id_fkey
   FOREIGN KEY (routine_slot_id) REFERENCES routine_slots(id) ON DELETE SET NULL;
+
+ALTER TABLE routine_slots ADD COLUMN IF NOT EXISTS modifier VARCHAR(50) DEFAULT 'NA';
