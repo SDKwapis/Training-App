@@ -78,3 +78,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_machines_muscle_group ON machines(muscle_group_id);
 CREATE INDEX IF NOT EXISTS idx_routine_slots_routine ON routine_slots(routine_id);
 CREATE INDEX IF NOT EXISTS idx_routines_user ON routines(user_id);
+
+-- Ensure deleting a routine sets sessions.routine_id to NULL (preserves history)
+ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_routine_id_fkey;
+ALTER TABLE sessions ADD CONSTRAINT sessions_routine_id_fkey
+  FOREIGN KEY (routine_id) REFERENCES routines(id) ON DELETE SET NULL;
+
+-- Ensure deleting a routine_slot sets session_sets.routine_slot_id to NULL
+ALTER TABLE session_sets DROP CONSTRAINT IF EXISTS session_sets_routine_slot_id_fkey;
+ALTER TABLE session_sets ADD CONSTRAINT session_sets_routine_slot_id_fkey
+  FOREIGN KEY (routine_slot_id) REFERENCES routine_slots(id) ON DELETE SET NULL;
